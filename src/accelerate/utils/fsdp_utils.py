@@ -29,6 +29,7 @@ from .dataclasses import get_module_class_from_name
 from .modeling import get_non_persistent_buffers, is_peft_model
 from .other import get_module_children_bottom_up, is_compiled_module, save
 from .versions import is_torch_version
+from ..utils.other import extract_model_from_parallel
 
 
 logger = get_logger(__name__)
@@ -54,8 +55,8 @@ def disable_fsdp_ram_efficient_loading():
 def _get_model_state_dict(model, adapter_only=False, sd_options=None):
     if adapter_only and is_peft_model(model):
         from peft import get_peft_model_state_dict
-
-        return get_peft_model_state_dict(model, adapter_name=model.active_adapter)
+        print('TEST', extract_model_from_parallel(model))
+        return get_peft_model_state_dict(extract_model_from_parallel(model), adapter_name=model.active_adapter)
 
     # Invariant: `sd_options` is not None only for FSDP2
     if sd_options is not None:
@@ -123,7 +124,10 @@ def save_fsdp_model(fsdp_plugin, accelerator, model, output_dir, model_index=0, 
     sd_options = _prepare_sd_options(fsdp_plugin)
 
     with ctx:
+        print('TEST', "call _get_model_state_dict")
         state_dict = _get_model_state_dict(model, adapter_only=adapter_only, sd_options=sd_options)
+        print('TEST', "return _get_model_state_dict")
+        print('TEST', fsdp_plugin.state_dict_type)
         if fsdp_plugin.state_dict_type == StateDictType.FULL_STATE_DICT:
             weights_name = f"{FSDP_MODEL_NAME}.bin" if model_index == 0 else f"{FSDP_MODEL_NAME}_{model_index}.bin"
             output_model_file = os.path.join(output_dir, weights_name)
